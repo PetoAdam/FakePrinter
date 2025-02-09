@@ -29,6 +29,7 @@ private:
     Mode mode;
 
     // Statistics.
+    std::vector<Layer> layers;
     int totalLayersPrinted = 0;
     int totalErrors = 0;
 

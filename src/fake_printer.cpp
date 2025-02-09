@@ -9,6 +9,10 @@
 #include <atomic>
 #include <csignal>
 
+#include <iomanip>
+#include <map>
+#include <vector>
+
 namespace fs = std::filesystem;
 
 // Declare external shutdown flag.
@@ -103,12 +107,107 @@ bool FakePrinter::processLayer(const Layer &layer)
     return true;
 }
 
-void FakePrinter::printSummary()
-{
-    spdlog::info("=== Fake Print Summary ===");
-    spdlog::info("Total layers printed: {}", totalLayersPrinted);
+void FakePrinter::printSummary() {
+    spdlog::info("\n=== Fake Print Summary ===");
+
+    // General statistics
+    spdlog::info("Total layers processed: {}", totalLayersPrinted);
     spdlog::info("Total errors encountered: {}", totalErrors);
+    if (totalLayersPrinted == 0) {
+        spdlog::warn("No layers were successfully printed.");
+        return;
+    }
+
+    // Layer error breakdown
+    std::map<std::string, int> errorCounts;
+    std::map<std::string, int> materialUsage;
+    std::map<int, int> printSpeeds;
+    double totalPrintTime = 0.0;
+    double minPrintSpeed = 9999, maxPrintSpeed = 0, avgPrintSpeed = 0;
+    int minLayerTime = 9999, maxLayerTime = 0;
+
+    for (const auto& layer : layers) {
+        if (!layer.layerError.empty() && layer.layerError != "SUCCESS") {
+            errorCounts[layer.layerError]++;
+        }
+        materialUsage[layer.materialType]++;
+        printSpeeds[layer.printSpeed]++;
+
+        // Print speed analysis
+        if (layer.printSpeed > maxPrintSpeed) maxPrintSpeed = layer.printSpeed;
+        if (layer.printSpeed < minPrintSpeed) minPrintSpeed = layer.printSpeed;
+        avgPrintSpeed += layer.printSpeed;
+
+        // Time analysis (parsing time from "5min_12sec" format)
+        int layerTimeSec = 0;
+        try {
+            size_t minPos = layer.layerTime.find("min");
+            size_t secPos = layer.layerTime.find("sec");
+            if (minPos != std::string::npos) {
+                layerTimeSec += std::stoi(layer.layerTime.substr(0, minPos)) * 60;
+            }
+            if (secPos != std::string::npos) {
+                layerTimeSec += std::stoi(layer.layerTime.substr(minPos + 4, secPos));
+            }
+            totalPrintTime += layerTimeSec;
+            if (layerTimeSec < minLayerTime) minLayerTime = layerTimeSec;
+            if (layerTimeSec > maxLayerTime) maxLayerTime = layerTimeSec;
+        } catch (...) {
+            spdlog::warn("Error parsing time for layer {}", layer.layerNumber);
+        }
+    }
+
+    avgPrintSpeed /= totalLayersPrinted;
+
+    // Print material usage statistics
+    spdlog::info("\nMaterial Usage:");
+    for (const auto& material : materialUsage) {
+        spdlog::info("  - {}: {} layers", material.first, material.second);
+    }
+
+    // Print speed statistics
+    spdlog::info("\nPrint Speed Analysis:");
+    spdlog::info("  - Min Speed: {} mm/s", minPrintSpeed);
+    spdlog::info("  - Max Speed: {} mm/s", maxPrintSpeed);
+    spdlog::info("  - Avg Speed: {:.2f} mm/s", avgPrintSpeed);
+
+    // Print time statistics
+    spdlog::info("\nTime Statistics:");
+    spdlog::info("  - Total print time: {:.2f} minutes", totalPrintTime / 60.0);
+    spdlog::info("  - Min layer time: {} sec", minLayerTime);
+    spdlog::info("  - Max layer time: {} sec", maxLayerTime);
+
+    // Print error breakdown
+    if (!errorCounts.empty()) {
+        spdlog::info("\nError Breakdown:");
+        for (const auto& err : errorCounts) {
+            spdlog::error("  - {}: {} occurrences", err.first, err.second);
+        }
+    }
+
+    // Print ASCII Bar Chart for error frequency
+    spdlog::info("\nError Distribution:");
+    for (const auto& err : errorCounts) {
+        std::cout << "  " << std::setw(15) << std::left << err.first << " | ";
+        for (int i = 0; i < err.second; ++i) {
+            std::cout << "#";
+        }
+        std::cout << " (" << err.second << ")\n";
+    }
+
+    // Print ASCII Bar Chart for print speed distribution
+    spdlog::info("\nPrint Speed Distribution:");
+    for (const auto& speed : printSpeeds) {
+        std::cout << "  " << std::setw(3) << speed.first << " mm/s | ";
+        for (int i = 0; i < speed.second; ++i) {
+            std::cout << "#";
+        }
+        std::cout << " (" << speed.second << " layers)\n";
+    }
+
+    spdlog::info("\n=== End of Fake Print Summary ===");
 }
+
 
 void FakePrinter::run()
 {
@@ -336,6 +435,7 @@ void FakePrinter::run()
         if (processLayer(layer))
         {
             totalLayersPrinted++;
+            layers.push_back(layer);
             spdlog::info("Layer {} printed successfully.", layer.layerNumber);
         }
         else
