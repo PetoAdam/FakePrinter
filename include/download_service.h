@@ -3,7 +3,8 @@
 
 #include <string>
 
-class DownloadService {
+class DownloadService
+{
 public:
     // Downloads the file at 'url' and saves it to 'destinationPath'.
     // Returns true on success, false on failure.

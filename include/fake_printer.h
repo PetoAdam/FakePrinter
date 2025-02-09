@@ -7,9 +7,11 @@
 #include <string>
 #include <vector>
 
-class FakePrinter {
+class FakePrinter
+{
 public:
-    enum Mode {
+    enum Mode
+    {
         SUPERVISED,
         AUTOMATIC
     };
@@ -26,20 +28,20 @@ private:
     std::string destFolder;
     Mode mode;
 
-    // Statistics
+    // Statistics.
     int totalLayersPrinted = 0;
     int totalErrors = 0;
 
-    // Validates a layer; returns true if valid, false otherwise (errorMsg contains details).
+    // Validates a layer; returns true if valid (errorMsg contains details on failure).
     bool validateLayer(const Layer &layer, std::string &errorMsg);
 
     // Processes a layer: writes out layer data and downloads its image.
     bool processLayer(const Layer &layer);
 
-    // Prepares output directories.
+    // Prepares the output directories.
     bool prepareOutputDirectory();
 
-    // Prints the summary of the print job.
+    // Prints a summary of the print job.
     void printSummary();
 };
 

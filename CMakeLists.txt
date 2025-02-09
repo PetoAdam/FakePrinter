@@ -3,20 +3,23 @@ project(FakePrinter)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+message("Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+message("Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 
-# Find libcurl (make sure libcurl development files are installed)
+# Find required packages.
 find_package(CURL REQUIRED)
+find_package(spdlog REQUIRED)
 
-# Include our header files
+# Include our header files.
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Add the executable and list our source files
+# Add the executable.
 add_executable(FakePrinter
     src/main.cpp
     src/fake_printer.cpp
     src/download_service.cpp
-    # Note: csv_reader.h is header-only, so no separate .cpp is needed.
+    # csv_reader.h is header-only.
 )
 
-# Link libraries: libcurl and (if necessary) filesystem support.
-target_link_libraries(FakePrinter PRIVATE CURL::libcurl stdc++fs)
+# Link external libraries.
+target_link_libraries(FakePrinter PRIVATE CURL::libcurl spdlog::spdlog spdlog::spdlog_header_only stdc++fs)
